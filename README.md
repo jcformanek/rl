@@ -1,2 +1,2 @@
-# rl
-Reinforcement Reading Module. Department of Applied Mathematics UCT. 
+# Reinforcement Learning
+Reinforcement Learning Reading Module. Department of Applied Mathematics UCT. 
