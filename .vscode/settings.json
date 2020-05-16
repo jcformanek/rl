@@ -1,0 +1,6 @@
+{
+    "python.pythonPath": "/home/claude/.virtualenvs/rl/bin/python",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.mypyEnabled": true
+}
