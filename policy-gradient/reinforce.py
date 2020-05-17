@@ -5,9 +5,9 @@ import numpy as np
 import gym
 
 def create_network(state_dims, action_dims):
-    return nn.Sequential(nn.Linear(state_dims, 256),
+    return nn.Sequential(nn.Linear(state_dims, 32),
                                     nn.ReLU(),
-                                    nn.Linear(256, action_dims))
+                                    nn.Linear(32, action_dims))
 
 # policy = create_network(4,2)
 
@@ -23,7 +23,7 @@ def create_network(state_dims, action_dims):
 class REINFORCE_Agent():
     def __init__(self, state_dims, action_dims, lr=0.0001):
         self.Logits_net = create_network(state_dims, action_dims)
-        self.optimizer = torch.optim.RMSprop(self.Logits_net.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam(self.Logits_net.parameters(), lr=lr)
 
     def get_policy(self, states):
         logits = self.Logits_net(states)
@@ -50,34 +50,42 @@ class REINFORCE_Agent():
 
 if __name__=="__main__":
     env = gym.make('CartPole-v1')
-    agent = REINFORCE_Agent(4,2, lr=0.00001)
+    agent = REINFORCE_Agent(4,2, lr=0.01)
     epochs = 100000
     scores = []
+    batch_size = 5000
     for e in range(epochs):
-        states = []
-        actions = []
-        rewards = []
-        done = False
-        state = env.reset()
-        score = 0
-        while not done:
-            action = agent.get_action(state)
-            next_state, reward, done, _ = env.step(action)
-            states.append(state)
-            actions.append(action)
-            rewards.append(reward)
-            score += 1
-        # cumulative_sum = np.zeros(len(rewards)) + sum(rewards)
-        n = len(rewards)
-        rtgs = np.zeros_like(rewards)
-        for i in reversed(range(n)):
-            rtgs[i] = rewards[i] + (rtgs[i+1] if i+1 < n else 0)
-        rtgs = list(rtgs)
-        agent.reinforce(states, actions, rtgs)
-        scores.append(score)
-        avg_score = np.mean(scores[-100:])
+        batch_states = []
+        batch_actions = []
+        batch_returns = []
+        while True:
+            done = False
+            state = env.reset()
+            score = 0
+            rewards = []
+            while not done:
+                action = agent.get_action(state)
+                next_state, reward, done, _ = env.step(action)
+                batch_states.append(state)
+                batch_actions.append(action)
+                rewards.append(reward)
+                state = next_state
+                score += 1
+            cumulative_return = sum(rewards)
+            for i in range(score):
+                batch_returns.append(cumulative_return)
+            scores.append(score)
+            # n = len(rewards)
+            # rtgs = np.zeros_like(rewards)
+            # for i in reversed(range(n)):
+            #     rtgs[i] = rewards[i] + (rtgs[i+1] if i+1 < n else 0)
+            # rtgs = list(rtgs)
+            if len(batch_states) >= batch_size:
+                break
+        agent.reinforce(batch_states, batch_actions, batch_returns)
+        avg_score = np.mean(scores[-10:])
 
-        print('episode: ', e,'score: ', score,
+        print('episode: ', e,
              ' average score %.1f' % avg_score)
         
 
