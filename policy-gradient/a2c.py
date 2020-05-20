@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import gym
 
-def train(env_name='CartPole-v1', hidden_dims=32, lr=0.01, batch_size=5000, epochs=100, gamma=0.99):
+def train(env_name='CartPole-v1', hidden_dims=32, lr=0.1, batch_size=5000, epochs=1000, gamma=0.95):
     env = gym.make(env_name)
     obs_dims = env.observation_space.shape[0]
     act_dims = env.action_space.n
@@ -101,4 +101,4 @@ def train(env_name='CartPole-v1', hidden_dims=32, lr=0.01, batch_size=5000, epoc
                      (e, l_loss, v_loss, avg_rets, avg_ep_len))
 
 if __name__ == '__main__':
-    train(lr=0.1)
+    train()
