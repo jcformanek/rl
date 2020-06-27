@@ -1,0 +1,93 @@
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import gym
+import matplotlib.pyplot as plt
+
+def train(env_name='CartPole-v1', hidden_dims=32, lr=0.01, batch_size=3000, epochs=100):
+    env = gym.make(env_name)
+    obs_dims = env.observation_space.shape[0]
+    act_dims = env.action_space.n
+
+    logits = nn.Sequential(nn.Linear(obs_dims, hidden_dims),
+                            nn.ReLU(),
+                            nn.Linear(hidden_dims, act_dims)
+                            )
+
+    logits_optimizer = optim.Adam(logits.parameters(), lr=lr)
+
+    def get_action(obs):
+        obs = torch.tensor(obs, dtype=torch.float32)
+        policy = torch.distributions.Categorical(logits=logits(obs))
+        return policy.sample().item()
+
+    def get_rewards_to_go(rewards):
+        n = len(rewards)
+        rtgs = np.zeros_like(rewards)
+        for i in reversed(range(n)):
+            rtgs[i] = rewards[i] + (rtgs[i+1] if i+1 < n else 0)
+        return list(rtgs)
+
+    def get_logits_loss(obs, acts, rtgs):
+        policy = torch.distributions.Categorical(logits=logits(obs))
+        log_probs = policy.log_prob(acts)
+        return -(log_probs*rtgs).mean()
+
+    def train_one_epoch():
+        batch_obs = []
+        batch_acts = []
+        batch_rtgs = []
+        scores = []
+        while True:
+            ep_rewards = []
+            ep_len = 0
+            obs = env.reset()
+            done = False
+            while not done:
+                act = get_action(obs)
+                obs_, r, done, _ = env.step(act)
+
+                batch_obs.append(obs)
+                batch_acts.append(act)
+                ep_rewards.append(r)
+
+                obs = obs_
+                ep_len += 1
+
+            scores.append(ep_len)
+            batch_rtgs += get_rewards_to_go(ep_rewards)
+
+            if len(batch_obs) >= batch_size:
+                break
+
+        batch_obs = torch.tensor(batch_obs, dtype=torch.float32)
+        batch_acts = torch.tensor(batch_acts, dtype=torch.float32)
+        batch_rtgs = torch.tensor(batch_rtgs, dtype=torch.float32)
+
+        logits_optimizer.zero_grad()
+        batch_loss = get_logits_loss(batch_obs, batch_acts, batch_rtgs)
+        batch_loss.backward()
+        logits_optimizer.step()
+
+        return batch_loss, scores
+
+    scores = []
+    for e in range(epochs):
+        loss, scrs = train_one_epoch()
+        avg_score = sum(scrs)/len(scrs)
+        print('epoch: %3d \t avg_score: %.3f'% (e, avg_score))
+        scores += scrs
+
+
+    avg_scores = []
+    for i in range(len(scores)):
+        avg_scores.append(sum(scores[max(i-100,0):i])/100)
+    plt.plot(np.arange(0,len(avg_scores)), avg_scores)
+    plt.xlabel('No. of games played')
+    plt.ylabel('Avg. returns')
+    plt.show()
+    print('done')
+
+if __name__ == '__main__':
+    train()

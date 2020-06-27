@@ -3,6 +3,7 @@ import random
 import torch
 import torch.nn as nn
 import gym
+import matplotlib.pyplot as plt
 
 class ReplayBuffer:
     def __init__(self, size):
@@ -43,15 +44,13 @@ class ReplayBuffer:
 
 
 def create_network(state_dims, action_dims):
-    return nn.Sequential(nn.Linear(state_dims, 256),
+    return nn.Sequential(nn.Linear(state_dims, 32),
                                     nn.ReLU(),
-                                    nn.Linear(256, action_dims))
-
-
+                                    nn.Linear(32, action_dims))
 
 class DQN_Agent():
-    def __init__(self, state_dims, action_dims, lr=0.0001, gamma=0.99, memory_size=100000,
-     batch_size=32, epsilon=1, epsilon_min=0.01, epsilon_dec=5e-5, target_update_frequency=64):
+    def __init__(self, state_dims, action_dims, lr=1e-3, gamma=0.99, memory_size=1000000,
+     batch_size=64, epsilon=1, epsilon_min=0.01, epsilon_dec=5e-5, target_update_frequency=64):
         self.memory = ReplayBuffer(memory_size)
         self.batch_size = batch_size
         self.Q_eval = create_network(state_dims, action_dims)
@@ -120,6 +119,7 @@ if __name__ == "__main__":
     agent = DQN_Agent(4, 2)
     epochs = 1000
     scores = []
+    avg_scores = []
     for e in range(epochs):
         done = False
         state = env.reset()
@@ -134,7 +134,13 @@ if __name__ == "__main__":
         scores.append(score)
 
         avg_score = np.mean(scores[-100:])
+        avg_scores.append(avg_score)
 
-        print('episode: ', e,'score: ', score,
-             ' average score %.1f' % avg_score,
+        print('epoch: ', e, ' average score %.1f' % avg_score,
             'epsilon %.2f' % agent.epsilon)
+
+    plt.plot(np.arange(0,len(avg_scores)), avg_scores)
+    plt.xlabel('No. of games played')
+    plt.ylabel('Avg. returns')
+    plt.show()
+    print('done')
