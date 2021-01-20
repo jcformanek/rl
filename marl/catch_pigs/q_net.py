@@ -15,6 +15,7 @@ class QNet(nn.Module):
         self.in_dims = in_dims
         self.out_dim = out_dim
         self.dropout = dropout
+        self.flattened = -1
 
         self.batch_norms = nn.ModuleList()
 
@@ -45,7 +46,8 @@ class QNet(nn.Module):
 
         self.mlp = nn.ModuleList()
 
-        in_feat = h*w*out_channels
+        self.flattened = h*w*out_channels
+        in_feat = self.flattened
         out_feat = 100
         layer = nn.Linear(in_feat, out_feat)
         self.mlp.append(layer)
@@ -63,7 +65,7 @@ class QNet(nn.Module):
             x = self.batch_norms[i](x)
             x = torch.nn.functional.dropout(x, self.dropout)
 
-        x = torch.flatten(x)
+        x = x.view(-1, self.flattened)
 
         for i in range(len(self.mlp) -1):
             x = self.mlp[i](x)
@@ -72,10 +74,6 @@ class QNet(nn.Module):
         x = self.mlp[-1](x)
 
         return x
-
-obs = torch.zeros((1,3, 21, 21)) + 1
-q_net = QNet((3, 21, 21), 4)
-print(q_net(obs))
 
 
         

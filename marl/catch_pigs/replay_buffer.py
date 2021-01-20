@@ -29,6 +29,6 @@ class ReplayBuffer():
         """
         TO DO: Maybe redesign to return non repeating indxs!!
         """
-        hi = min(self.size, self.ctr)
+        hi = min(self.size - 1, self.ctr - 1)
         idxs = np.random.random_integers(0, hi, batch_size)
-        return self.obs_buffer[idxs], self.act_buffer[idxs], self._obs_buffer[idxs], self.rew_buffer[idxs], self.done_buffer[idxs]
+        return self.obs_buffer[idxs], self.act_buffer[idxs], self.rew_buffer[idxs], self._obs_buffer[idxs], self.done_buffer[idxs]
