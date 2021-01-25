@@ -600,7 +600,7 @@ class EnvCatchPigs(object):
 
         # agent1 move
         if action_list[0] == 0:    # turn left
-            reward_1 = reward_1 - 1
+            reward_1 = reward_1
             if self.agt1_ori == 0:
                 self.agt1_ori = 3
             elif self.agt1_ori == 1:
@@ -611,7 +611,7 @@ class EnvCatchPigs(object):
                 self.agt1_ori = 2
 
         elif action_list[0] == 1:  # turn right
-            reward_1 = reward_1 - 1
+            reward_1 = reward_1
             if self.agt1_ori == 0:
                 self.agt1_ori = 1
             elif self.agt1_ori == 1:
@@ -622,7 +622,7 @@ class EnvCatchPigs(object):
                 self.agt1_ori = 0
 
         elif action_list[0] == 2:  # move
-            reward_1 = reward_1 - 1
+            reward_1 = reward_1
             if self.agt1_ori == 0:
                 if self.occupancy[self.agt1_pos[0] - 1][self.agt1_pos[1]] != 1:  # if can move
                     self.agt1_pos[0] = self.agt1_pos[0] - 1
@@ -653,7 +653,7 @@ class EnvCatchPigs(object):
                     reward_1 = reward_1 - 20
 
         elif action_list[0] == 3:  # catch
-            reward_1 = reward_1 - 1
+            reward_1 = reward_1
             if self.agt1_ori == 0:
                 if self.pig_pos[0] == self.agt1_pos[0]-1:
                     if self.pig_pos[1] == self.agt1_pos[1]:
@@ -673,7 +673,7 @@ class EnvCatchPigs(object):
 
         # agent2 move
         if action_list[1] == 0:    # turn left
-            reward_2 = reward_2 - 1
+            reward_2 = reward_2
             if self.agt2_ori == 0:
                 self.agt2_ori = 3
             elif self.agt2_ori == 1:
@@ -684,7 +684,7 @@ class EnvCatchPigs(object):
                 self.agt2_ori = 2
 
         elif action_list[1] == 1:  # turn right
-            reward_2 = reward_2 - 1
+            reward_2 = reward_2
             if self.agt2_ori == 0:
                 self.agt2_ori = 1
             elif self.agt2_ori == 1:
@@ -695,7 +695,7 @@ class EnvCatchPigs(object):
                 self.agt2_ori = 0
 
         elif action_list[1] == 2:  # move
-            reward_2 = reward_2 - 1
+            reward_2 = reward_2
             if self.agt2_ori == 0:
                 if self.occupancy[self.agt2_pos[0] - 1][self.agt2_pos[1]] != 1:  # if can move
                     self.agt2_pos[0] = self.agt2_pos[0] - 1
@@ -726,7 +726,7 @@ class EnvCatchPigs(object):
                     reward_2 = reward_2 - 20
 
         elif action_list[1] == 3:  # catch
-            reward_2 = reward_2 - 1
+            reward_2 = reward_2
             if self.agt2_ori == 0:
                 if self.pig_pos[0] == self.agt2_pos[0]-1:
                     if self.pig_pos[1] == self.agt2_pos[1]:
@@ -815,9 +815,9 @@ class EnvCatchPigs(object):
             self.reset()
         else:
             if action_list[1] == 3:
-                reward_2 = reward_2 - 50
+                reward_2 = reward_2
             if action_list[0] == 3:
-                reward_1 = reward_1 - 50
+                reward_1 = reward_1
 
         self.if_agt1_catches = False
         self.if_agt2_catches = False
