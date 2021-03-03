@@ -71,8 +71,7 @@ class DqnAgent():
 
 
 
-dqn1 = DqnAgent((3, 21, 21), 4)
-dqn2 = DqnAgent((3, 21, 21), 4)
+dqn = DqnAgent((3, 15, 15), 5)
 
 
 def swap_axes(arr):
@@ -81,38 +80,32 @@ def swap_axes(arr):
     return arr
 
 
-from env_CatchPigs import EnvCatchPigs
+from env_SingleCatchPigs import EnvSingleCatchPigs
 import random
 
 if __name__ == '__main__':
-    env = EnvCatchPigs(7, False)
+    env = EnvSingleCatchPigs(7)
     max_iter = 1000000
-    obs_list = env.get_obs()
-    obs1 = swap_axes(obs_list[0])
-    obs2 = swap_axes(obs_list[1])
+    obs = env.get_obs()
+    obs = swap_axes(obs)
+    found = []
     for i in range(max_iter):
-        act1 = dqn1.choose_action(obs1)
-        act2 = dqn2.choose_action(obs2)
-        act_list = [act1, act2]
+        act = dqn.choose_action(obs)
         # print("iter= ", i, env.agt1_pos, env.agt2_pos, env.pig_pos, env.agt1_ori, env.agt2_ori, 'action', act1, act2)
         # env.render()
-        rew_list, done = env.step(act_list)
-        rew1 = rew_list[0]
-        rew2 = rew_list[1]
+        rew, done = env.step(act)
         # print(rew1)
-        _obs_list = env.get_obs()
-        _obs1 = swap_axes(_obs_list[0])
-        _obs2 = swap_axes(_obs_list[1])
-        dqn1.store_transition(obs1, act1, rew1, _obs1, done)
-        dqn2.store_transition(obs2, act2, rew2, _obs2, done)
-        obs1 = _obs1
-        obs2 = _obs2
-        dqn1.learn()
-        dqn2.learn()
+        _obs = env.get_obs()
+        _obs = swap_axes(_obs)
+        dqn.store_transition(obs, act, rew, _obs, done)
+        obs = _obs
+        dqn.learn()
         #env.plot_scene()
-        if rew_list[0] > 0:
-            print("iter= ", i)
-            print("agent 1 finds goal")
+        if rew > 0:
+            found.append(1)
+        else:
+            found.append(0)
 
-        if i % 1000 == 0:
-            print("epsilon:", dqn1.epsilon)            
+        if (i + 1) % 1000 == 0:
+            win_rate = sum(found[-1000:]) / 10
+            print("Iter:", i + 1, "Win rate:", win_rate, "epsilon:", dqn.epsilon)    
