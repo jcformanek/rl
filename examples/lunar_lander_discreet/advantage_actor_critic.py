@@ -7,7 +7,7 @@ import numpy as np
 import gym
 
 def discount_cumsum(x, discount):
-    y = [0 for i in range(len(x))]
+    y = np.zeros_like(x)
     for i in range(len(x)-1, -1, -1):
         if i == len(x)-1:
             y[i] = x[i]
@@ -18,62 +18,61 @@ def discount_cumsum(x, discount):
 
 class Buffer:
 
-    def __init__(self, size, gamma=0.99, lam=0.97):
+    def __init__(self, obs_dim, size=4000, gamma=0.99, lam=0.97):
         super().__init__()
-        self.buf = []
-        self.ret_buf = []
-        self.adv_buf = []
+        self.obs_buf = np.zeros((size, obs_dim), dtype=np.float32)
+        self.act_buf = np.zeros(size, dtype=np.float32)
+        self.rew_buf = np.zeros(size, dtype=np.float32)
+        self.val_buf = np.zeros(size, dtype=np.float32)
+        self.logp_buf = np.zeros(size, dtype=np.float32)
+        self.ret_buf = np.zeros(size, dtype=np.float32)
+        self.adv_buf = np.zeros(size, dtype=np.float32)
         self.size = size
-        self.start_of_trajectory = 0
-        self.ctr = 0
         self.gamma = gamma
         self.lam = lam
+        self.start_of_trajectory = 0
+        self.ptr = 0
 
     def store_transition(self, obs, act, rew, val, logp):
-        assert self.ctr < self.size
-        self.buf.append((obs, act, rew, val, logp))
-        self.ctr += 1
+        assert self.ptr < self.size
+        idx = self.ptr
+        self.obs_buf[idx] = obs
+        self.act_buf[idx] = act
+        self.rew_buf[idx] = rew
+        self.val_buf[idx] = val
+        self.logp_buf[idx] = logp
+        self.ptr += 1
 
     def end_of_trajectory(self, last_val=0):
-        path_slice = slice(self.start_of_trajectory, self.ctr)
-        _, _, rew_slice, val_slice, _ = zip(*self.buf[path_slice])
-        rew_slice = list(rew_slice)
-        rew_slice.append(last_val)
-        rew_slice = np.array(rew_slice)
-        val_slice = list(val_slice)
-        val_slice.append(last_val)
-        val_slice = np.array(val_slice)
+        trajectory_slice = slice(self.start_of_trajectory, self.ptr)
+        rew_slice = np.append(self.rew_buf[trajectory_slice], last_val)
+        val_slice = np.append(self.val_buf[trajectory_slice], last_val)
 
         # Compute GAE
         deltas = rew_slice[:-1] + self.gamma * val_slice[1:] - val_slice[:-1]
         adv_slice = discount_cumsum(deltas, self.gamma * self.lam)
-        self.adv_buf += adv_slice
+        self.adv_buf[trajectory_slice] = adv_slice
 
-        # Store returns-to-go
+        # Store rewards-to-go
         ret_slice = discount_cumsum(rew_slice, self.gamma)[:-1]
-        self.ret_buf += ret_slice
+        self.ret_buf[trajectory_slice] = ret_slice
 
-        self.start_of_trajectory = self.ctr
+        self.start_of_trajectory = self.ptr
 
     def get(self):
-        assert self.ctr == self.size
-        obs_batch, act_batch, rew_batch, val_batch, logp_batch = zip(*self.buf)
-        adv_batch, ret_batch = self.adv_buf, self.ret_buf
-        data = {'obs': obs_batch, 'act': act_batch, 'rew': rew_batch, 'val': val_batch,
-            'logp': logp_batch, 'ret': ret_batch, 'adv': adv_batch}
+        assert self.ptr == self.size
+
+        data = {'obs': self.obs_buf, 'act': self.act_buf, 'rew': self.rew_buf, 'val': self.val_buf,
+            'logp': self.logp_buf, 'ret': self.ret_buf, 'adv': self.adv_buf}
 
         # Convert to tensors
-        data = {k: torch.tensor(np.array(v, dtype=np.float32)) for k,v in data.items()}
+        data = {k: torch.tensor(v) for k,v in data.items()}
 
         # Normalize advantages
         adv_mean, adv_std = torch.mean(data['adv']), torch.std(data['adv'])
         data['adv'] = (data['adv'] - adv_mean) / adv_std
 
-        self.buf = []
-        self.adv_buf = []
-        self.ret_buf = []
-
-        self.ctr, self.start_of_trajectory = 0, 0
+        self.ptr, self.start_of_trajectory = 0, 0
 
         return data
 
@@ -102,7 +101,7 @@ class Actor(nn.Module):
             layers.append(nn.ReLU())
 
         # Output layer dim == act_dim
-        output_layer = nn.Linear(self.hidden_dims[-1], act_dim)
+        output_layer = nn.Linear(self.hidden_dims[-1], self.act_dim)
         layers.append(output_layer)
 
         return nn.Sequential(*layers)
@@ -177,10 +176,15 @@ class ActorCritic(nn.Module):
         return self.step(obs)[0]
 
 
-def train_actor_critic(env, ac, steps_per_epoch=256, epochs=50, max_ep_len=1000, gamma=0.99, lam=0.97, 
-    pi_lr=1e-3, vf_lr=1e-3, train_v_iters=80):
+def train_actor_critic(env, steps_per_epoch=4000, epochs=50, max_ep_len=10000, gamma=0.99, lam=0.97, 
+    pi_lr=1e-3, vf_lr=1e-3, train_v_iters=80, hidden_dims=(256, 128)):
 
-    buf = Buffer(steps_per_epoch,  gamma=gamma, lam=lam)
+    obs_dim = env.observation_space.shape[0]
+    act_dim = env.action_space.n
+
+    ac = ActorCritic(obs_dim, act_dim, hidden_dims=HIDDEN_DIMS)
+
+    buf = Buffer(obs_dim, size=steps_per_epoch,  gamma=gamma, lam=lam)
 
     # Set up function for computing policy loss
     def compute_loss_pi(data):
@@ -267,17 +271,14 @@ def train_actor_critic(env, ac, steps_per_epoch=256, epochs=50, max_ep_len=1000,
 
 
 if __name__=='__main__':
-    ENV_NAME = 'CartPole-v1'
+    ENV_NAME = 'LunarLander-v2'
     HIDDEN_DIMS = (100,)
     EPOCHS = 1000
+    STEPS = 4000
 
     env = gym.make(ENV_NAME)
-    obs_dim = env.observation_space.shape[0]
-    act_dim = env.action_space.n
 
-    ac = ActorCritic(obs_dim, act_dim, hidden_dims=HIDDEN_DIMS)
-
-    train_actor_critic(env, ac, epochs=EPOCHS)
+    train_actor_critic(env, epochs=EPOCHS, steps_per_epoch=STEPS, hidden_dims=HIDDEN_DIMS)
 
     
 
