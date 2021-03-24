@@ -45,7 +45,7 @@ class Buffer:
         return data
 
 
-class DeepQNetwork(nn.Module):
+class MLPDeepQNetwork(nn.Module):
 
     def __init__(self, obs_dim, act_dim, hidden_dims=[64, 64], lr=1e-3):
         super().__init__()
@@ -133,7 +133,7 @@ class Agent:
 
         with torch.no_grad():
             q_next = self.q_next(next_obs)
-            q_target = rew + self.gamma * torch.max(q_next, dim=1)
+            q_target = rew + self.gamma * torch.max(q_next, dim=1)[0]
 
         loss = self.loss(q_eval, q_target)
         self.optimizer.zero_grad()

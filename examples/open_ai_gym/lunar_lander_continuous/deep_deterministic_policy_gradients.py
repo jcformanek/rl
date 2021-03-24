@@ -120,9 +120,6 @@ class DDPGAgent:
         self.pi_optimizer = Adam(self.ac.pi.parameters(), lr=pi_lr)
         self.q_optimizer = Adam(self.ac.q.parameters(), lr=q_lr)
 
-
-
-
     # Compute DDPG Q-loss
     def compute_loss_q(self, data):
         obs, act, rew, next_obs, done = data['obs'], data['act'], data['rew'], data['next_obs'], data['done']
@@ -136,7 +133,7 @@ class DDPGAgent:
             backup = rew + self.gamma * (1 - done) * q_pi_target
 
         # MSE loss against Bellman backup
-        loss_q = ((q-backup)**2).mean()
+        loss_q = ((q - backup)**2).mean()
 
         return loss_q
 
@@ -159,7 +156,7 @@ class DDPGAgent:
         self.q_optimizer.zero_grad()
         loss_q = self.compute_loss_q(batch)
         loss_q.backward()
-        self.q_optimizer
+        self.q_optimizer.step()
 
         # Freeze Q-network so you don't waste computational effort 
         # computing gradients for it during the policy learning step.
